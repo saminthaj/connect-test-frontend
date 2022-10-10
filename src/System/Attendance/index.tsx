@@ -1,10 +1,15 @@
-import React from 'react';
-import {Breadcrumb} from "antd";
-import {Space, Table, Tag, Card} from 'antd';
+import React, {useEffect, useState} from 'react';
+import {Breadcrumb, Button, Card, message, Table, UploadProps} from "antd";
 import type {ColumnsType} from 'antd/es/table';
-import {PlusCircleOutlined} from '@ant-design/icons';
+import {PlusCircleOutlined, UploadOutlined} from '@ant-design/icons';
+import Modal from 'antd/lib/modal/Modal';
+import Upload from 'antd/lib/upload/Upload';
+import {Axios} from "../Config/Axios";
 
 const Attendance = () => {
+
+    const [modalShow, setModalShow] = useState<boolean>(false)
+    const [data, setData] = useState<any>([])
 
     interface DataType {
         key: string;
@@ -16,76 +21,83 @@ const Attendance = () => {
 
     const columns: ColumnsType<DataType> = [
         {
-            title: 'Name',
-            dataIndex: 'name',
-            key: 'name',
-            render: text => <a>{text}</a>,
+            title: 'Employee',
+            dataIndex: 'employee',
+            key: 'employee',
+            render: text => <span>{text}</span>,
         },
         {
-            title: 'Age',
-            dataIndex: 'age',
-            key: 'age',
+            title: 'Checkin',
+            dataIndex: 'checkin',
+            key: 'checkin',
+            render: checkin => <span>{checkin ? checkin : 'N/A'} </span>,
         },
         {
-            title: 'Address',
-            dataIndex: 'address',
-            key: 'address',
+            title: 'Checkout',
+            dataIndex: 'checkout',
+            key: 'checkout',
+            render: checkout => <span>{checkout ? checkout : 'N/A'} </span>,
         },
         {
-            title: 'Tags',
-            key: 'tags',
-            dataIndex: 'tags',
-            render: (_, {tags}) => (
-                <>
-                    {tags.map(tag => {
-                        let color = tag.length > 5 ? 'geekblue' : 'green';
-                        if (tag === 'loser') {
-                            color = 'volcano';
-                        }
-                        return (
-                            <Tag color={color} key={tag}>
-                                {tag.toUpperCase()}
-                            </Tag>
-                        );
-                    })}
-                </>
-            ),
-        },
-        {
-            title: 'Action',
-            key: 'action',
-            render: (_, record) => (
-                <Space size="middle">
-                    <a>Invite {record.name}</a>
-                    <a>Delete</a>
-                </Space>
-            ),
+            title: 'Duration',
+            dataIndex: 'duration',
+            key: 'duration',
+            render: text => <span>{text} Minutes</span>,
         },
     ];
 
-    const data: DataType[] = [
-        {
-            key: '1',
-            name: 'John Brown',
-            age: 32,
-            address: 'New York No. 1 Lake Park',
-            tags: ['nice', 'developer'],
+    const props: UploadProps = {
+        name: 'file',
+        action: 'http://localhost:8000/api/import/attendance',
+        headers: {},
+        onChange(info) {
+            if (info.file.status !== 'uploading') {
+                console.log(info.file, info.fileList);
+            }
+            if (info.file.status === 'done') {
+                onModalClose();
+            } else if (info.file.status === 'error') {
+                message.error(`${info.file.name} file upload failed.`);
+            }
         },
-        {
-            key: '2',
-            name: 'Jim Green',
-            age: 42,
-            address: 'London No. 1 Lake Park',
-            tags: ['loser'],
-        },
-        {
-            key: '3',
-            name: 'Joe Black',
-            age: 32,
-            address: 'Sidney No. 1 Lake Park',
-            tags: ['cool', 'teacher'],
-        },
-    ];
+    };
+
+    useEffect(() => {
+        getData();
+    }, [])
+
+    const onModalClose = () => {
+        setModalShow(false);
+        getData();
+    }
+
+    const getData = () => {
+
+        Axios.get('/api/attendance', {
+            headers: {
+                Accept: 'application/json',
+            }
+        }).then((response) => {
+            setData(response.data);
+        }).catch((error) => {
+            console.log(error);
+            return error;
+        });
+    }
+
+    const challenge = (link: string) => {
+
+        Axios.get(link, {
+            headers: {
+                Accept: 'application/json',
+            }
+        }).then((response) => {
+            console.log(response.data);
+        }).catch((error) => {
+            console.log(error);
+            return error;
+        });
+    }
 
     return (
         <div>
@@ -94,10 +106,19 @@ const Attendance = () => {
                 <Breadcrumb.Item>Attendance</Breadcrumb.Item>
             </Breadcrumb>
             <div className="site-layout-content">
-                <Card title="Attendance" extra={<PlusCircleOutlined/>}>
+                <Card title="Attendance" extra={<div>
+                    <PlusCircleOutlined onClick={() => setModalShow(true)}/>
+                    <Button style={{marginLeft: 4}} onClick={() => challenge('/api/challenge2')}>Challenge 2</Button>
+                    <Button style={{marginLeft: 4}} onClick={() => challenge('/api/challenge4')}>Challenge 4</Button>
+                </div>}>
                     <Table columns={columns} dataSource={data}/>
                 </Card>
             </div>
+            <Modal title="Basic Modal" open={modalShow} onOk={getData} onCancel={onModalClose}>
+                <Upload {...props}>
+                    <Button icon={<UploadOutlined/>}>Click to Upload</Button>
+                </Upload>
+            </Modal>
         </div>
     )
 }
